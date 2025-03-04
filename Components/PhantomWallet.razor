@@ -5,11 +5,11 @@
 @if (!string.IsNullOrEmpty(WalletAddress))
 {
     <p><strong>Connected Wallet:</strong> @WalletAddress</p>
-    <button  @onclick="() => DisconnectWallet()">Disconnect</button>
+    <RadzenButton  Click="() => DisconnectWallet()">Disconnect</RadzenButton>
 }
 else
 {
-    <button @onclick="() => ConnectWallet()">Connect Wallet</button>
+    <RadzenButton Click="() => ConnectWallet()">Connect Wallet</RadzenButton>
 }
 
 @code {
@@ -33,5 +33,3 @@ else
         WalletAddress = string.Empty;
     }
 }
-
-@* <script src="js/phantom.js"></script> *@
