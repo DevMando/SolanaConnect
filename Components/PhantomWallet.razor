@@ -1,4 +1,5 @@
-﻿@inject IJSRuntime JS
+﻿@using System.Net.Sockets
+@inject IJSRuntime JS
 
 <h3>Connect Your Phantom Wallet</h3>
 
@@ -14,6 +15,9 @@ else
 
 @code {
     private string WalletAddress = string.Empty;
+    private const string RecipientWallet = "YourRecipientPublicKeyHere"; 
+    private const ulong LamportsPerSol = 1_000_000_000; // Solana: 1 SOL = 1,000,000,000 lamports
+
 
     public async Task ConnectWallet()
     {
@@ -43,5 +47,70 @@ else
         {
             Console.WriteLine($"Error disconnecting from Phantom Wallet: {ex.Message}");
         }
+    }
+
+    private async Task SendSOL()
+    {
+        if (string.IsNullOrEmpty(WalletAddress))
+        {
+            Console.WriteLine("Wallet is not connected!");
+            return;
+        }
+
+        try
+        {
+            // 1️⃣ Create a Solana Transaction to Send 0.01 SOL
+            var sender = new Solnet.Wallet.PublicKey(WalletAddress);
+            var recipient = new Solnet.Wallet.PublicKey(RecipientWallet);
+
+            var tx = new Solnet.Wallet.Transaction();
+            tx.Add(Solnet.Rpc.Builders.TransferTransactionBuilder.Create(
+                sender,
+                recipient,
+                0.01m * LamportsPerSol // Convert SOL to lamports
+            ));
+
+            // 2️⃣ Serialize Transaction to Base64
+            var transactionBytes = tx.Serialize();
+            string transactionBase64 = Convert.ToBase64String(transactionBytes);
+
+            // 3️⃣ Ask Phantom Wallet to Sign Transaction
+            string? signedTransactionBase64 = await JS.InvokeAsync<string>("phantomWallet.signTransaction", transactionBase64);
+
+            if (!string.IsNullOrEmpty(signedTransactionBase64))
+            {
+                Console.WriteLine("Transaction Signed Successfully!");
+
+                // 4️⃣ Broadcast Transaction to Solana Blockchain
+                string transactionSignature = await SendTransactionToSolana(signedTransactionBase64);
+
+                if (!string.IsNullOrEmpty(transactionSignature))
+                {
+                    Console.WriteLine($"✅ SOL Sent! Transaction Signature: {transactionSignature}");
+                }
+                else
+                {
+                    Console.WriteLine("⚠ Failed to send transaction to Solana.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Transaction signing failed.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending SOL: {ex.Message}");
+        }
+    }
+
+    private async Task<string> SendTransactionToSolana(string signedTransactionBase64)
+    {
+        var rpcClient = new Socket.Rpc.SolanaRpcClient("https://api.mainnet-beta.solana.com"); // Use mainnet
+        var txBytes = Convert.FromBase64String(signedTransactionBase64);
+
+        var result = await rpcClient.SendTransactionAsync(txBytes);
+
+        return result.WasSuccessful ? result.Result : string.Empty;
     }
 }
