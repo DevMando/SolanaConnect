@@ -1,0 +1,37 @@
+﻿@inject IJSRuntime JS
+
+<h3>Connect Your Phantom Wallet</h3>
+
+@if (!string.IsNullOrEmpty(WalletAddress))
+{
+    <p><strong>Connected Wallet:</strong> @WalletAddress</p>
+    <button  @onclick="() => DisconnectWallet()">Disconnect</button>
+}
+else
+{
+    <button @onclick="() => ConnectWallet()">Connect Wallet</button>
+}
+
+@code {
+    private string WalletAddress = string.Empty;
+
+    public async Task ConnectWallet()
+    {
+        try
+        {
+            WalletAddress = await JS.InvokeAsync<string>("phantomWallet.connect");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error connecting to Phantom Wallet: {ex.Message}");
+        }
+    }
+
+    private void DisconnectWallet()
+    {
+        WalletAddress = string.Empty;
+    }
+}
+
+@* <script src="js/phantom.js"></script> *@
